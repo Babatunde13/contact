@@ -1,4 +1,4 @@
-from flask import Flask, request, session, url_for, render_template, redirect, flash, session
+from flask import Flask, request, url_for, render_template, redirect, flash, session
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField
@@ -109,7 +109,6 @@ def dashboard():
 @app.route('/insert', methods = ['POST'])
 @login_required
 def insert():
-    print(session)
     name = request.form['name']
     email = request.form['email']
     phone = request.form['phone']
@@ -159,3 +158,4 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
