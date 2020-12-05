@@ -1,4 +1,4 @@
-from flask import Flask, request, url_for, render_template, redirect, flash, session
+from flask import Flask, request, session, url_for, render_template, redirect, flash, session
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField
@@ -6,13 +6,11 @@ from wtforms.validators import InputRequired, Email, Length
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from sqlalchemy import Table, Column, Integer, ForeignKey
-from sqlalchemy.orm import relationship
 
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = 'Thisisasecret'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Users/DELL INSPIRON 14/Downloads/Compressed/Flask/Python Code/Test/database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 
 Bootstrap(app)
 db = SQLAlchemy(app)
@@ -27,7 +25,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(15), unique=True)
     email = db.Column(db.String(40), unique=True)
     password = db.Column(db.String(60))
-    #children = relationship("Contact")
+    contacts = db.relationship("Contact", backref='owner', lazy='dynamic')
 
 #creating model table for the contact
 class Contact(db.Model):
@@ -36,12 +34,14 @@ class Contact(db.Model):
     phone = db.Column(db.String(50))
     email = db.Column(db.String(50))
     location = db.Column(db.String(100))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    def __init__(self, name, email, phone, location):
+    def __init__(self, name, email, phone, location, user_id):
         self.name = name
         self.email = email
         self.phone = phone
         self.location = location
+        self.user_id = user_id
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -102,45 +102,46 @@ def signup():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    all_data = Contact.query.all()
-    return render_template('dashboard.html')
+    contacts = current_user.contacts.all()
+    return render_template('dashboard.html', contacts=contacts)
 
 #this route is for inserting data to mysql database via html forms
 @app.route('/insert', methods = ['POST'])
+@login_required
 def insert():
-    if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        phone = request.form['phone']
-        location = request.form['location']
+    print(session)
+    name = request.form['name']
+    email = request.form['email']
+    phone = request.form['phone']
+    location = request.form['location']
 
-        my_data = Contact(name, email, phone, location)
-        db.session.add(my_data)
-        db.session.commit()
+    my_data = Contact(name, email, phone, location, user_id = current_user.id)
+    db.session.add(my_data)
+    db.session.commit()
 
-        flash("Contact added successfully")
+    flash("Contact added successfully")
 
-        return redirect(url_for('dashboard'))
+    return redirect(url_for('dashboard'))
 
 #this is our update route where we are going to update our contact
-@app.route('/update', methods = ['GET', 'POST'])
+@app.route('/update', methods = ['POST'])
+@login_required
 def update():
+    my_data = Contact.query.get(request.form.get('id'))
 
-    if request.method == 'POST':
-        my_data = Contact.query.get(request.form.get('id'))
+    my_data.name = request.form['name']
+    my_data.email = request.form['email']
+    my_data.phone = request.form['phone']
+    my_data.location = request.form['location']
 
-        my_data.name = request.form['name']
-        my_data.email = request.form['email']
-        my_data.phone = request.form['phone']
-        my_data.location = request.form['location']
+    db.session.commit()
+    flash("Contact Updated Successfully")
 
-        db.session.commit()
-        flash("Contact Updated Successfully")
-
-        return redirect(url_for('dashboard'))
+    return redirect(url_for('dashboard'))
 
 #This route is for deleting our contact
 @app.route('/delete/<id>/', methods = ['GET', 'POST'])
+@login_required
 def delete(id):
     my_data = Contact.query.get(id)
     db.session.delete(my_data)
