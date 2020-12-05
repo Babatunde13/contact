@@ -36,12 +36,14 @@ class Contact(db.Model):
     phone = db.Column(db.String(50))
     email = db.Column(db.String(50))
     location = db.Column(db.String(100))
+    owner = db.relationship('User', backref='contact')
 
-    def __init__(self, name, email, phone, location):
+    def __init__(self, name, email, phone, location, owner):
         self.name = name
         self.email = email
         self.phone = phone
         self.location = location
+        self.owner = owner
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -114,7 +116,7 @@ def insert():
         phone = request.form['phone']
         location = request.form['location']
 
-        my_data = Contact(name, email, phone, location)
+        my_data = Contact(name, email, phone, location, (owner=request.user))
         db.session.add(my_data)
         db.session.commit()
 
